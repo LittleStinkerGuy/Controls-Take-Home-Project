@@ -5,6 +5,10 @@ The change log will be updated with every commit and will walk through my though
 Todo:
 
 -   [ ] Create basic code to move various models of motors in `./robotCode`
+    -   [ ] Kraken Support
+    -   [ ] Falcon Support
+    -   [ ] SparkMax Support
+    -   [ ] Network Table Support
 -   [ ] Add support for motor movement in `./driverUI`
 -   [ ] Create a basic debug library in `./RobotCode`
 -   [ ] Add logging system in `./driverUI`
