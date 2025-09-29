@@ -17,6 +17,8 @@ public class MotorTester extends SubsystemBase {
     public MotorTester() {
         motors.add(new TalonFXMotor(1));
         motors.add(new SparkMaxMotor(2, false));
+        motors.add(new SparkMaxMotor(3, true));
+        motors.add(new TalonFXMotor(4));
 
         NetworkTableInstance nt = NetworkTableInstance.getDefault();
         estopSub = nt.getTable("MotorController").getBooleanTopic("emergencyStop").subscribe(false);

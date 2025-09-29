@@ -11,13 +11,16 @@ import com.ctre.phoenix6.configs.CurrentLimitsConfigs;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.NeutralModeValue;
+import com.ctre.phoenix6.sim.TalonFXSimState;
 
 public class TalonFXMotor extends Motor {
 
   private final TalonFX motor;
+  private final TalonFXSimState motorSim;
 
   public TalonFXMotor(int deviceID) {
     motor = new TalonFX(deviceID, "can");
+    motorSim = new TalonFXSimState(motor);
 
     TalonFXConfiguration config = new TalonFXConfiguration();
     // lowk chat gpt-ed these values idk what they do
@@ -48,11 +51,14 @@ public class TalonFXMotor extends Motor {
   }
 
   public void setSpeed(Dimensionless speed) {
-    motor.set(speed.in(Value));
+    motor.set(speed.in(Value) * 6000);
+
+    motorSim.setRotorVelocity(speed.in(Value));
   }
 
   public AngularVelocity getVelocity() {
     return motor.getVelocity().getValue();
+
   }
 
   public Dimensionless getSetSpeed() {
@@ -61,6 +67,8 @@ public class TalonFXMotor extends Motor {
 
   public void setPosition(Angle position) {
     motor.setPosition(position);
+
+    motorSim.setRawRotorPosition(position);
   }
 
   public Angle getPosition() {
@@ -68,7 +76,8 @@ public class TalonFXMotor extends Motor {
   }
 
   public void stopMotor() {
-    super.desiredSpeedPublisher.set(0);
     motor.stopMotor();
+
+    motorSim.setRotorVelocity(0);
   }
 }

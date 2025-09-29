@@ -11,13 +11,24 @@ from PySide6.QtWidgets import (
     QFrame,
 )
 from PySide6.QtGui import QPalette, QColor
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt, Signal, QTimer
+
+from typing import Optional
+
+# Attempt to import the NT client. If not available at import time, we allow
+# passing an already-constructed client into the widget.
+try:
+    from test import MotorNTClient  # adjust module name if needed
+except Exception:  # pragma: no cover
+    MotorNTClient = None  # type: ignore
 
 
 class MotorDisplay(QWidget):
     close_requested = Signal(object)
 
-    def __init__(self, MotorType, DeviceID, encoderAttached):
+    def __init__(
+        self, MotorType, DeviceID, encoderAttached, nt_client: Optional[object] = None
+    ):
         super().__init__()
 
         layout = QVBoxLayout(self)
@@ -38,6 +49,18 @@ class MotorDisplay(QWidget):
             """
         )
         self.setAttribute(Qt.WA_StyledBackground, True)
+
+        # ---------------- NT client + polling setup ----------------
+        self._nt = nt_client
+        # Create a default client connected to localhost if none was provided
+        if self._nt is None and MotorNTClient is not None:
+            self._nt = MotorNTClient()
+        if getattr(self, "_nt", None) is not None:
+            try:
+                self._nt.start()
+            except Exception:
+                # If start fails, we still keep the UI functional without data
+                pass
 
         # Create header, middle, and footer layouts
         header_layout = QVBoxLayout()
@@ -144,6 +167,18 @@ class MotorDisplay(QWidget):
         control_buttons_row.addWidget(self.stop_button)
         footer_layout.addLayout(control_buttons_row)
 
+        # Wire UI actions
+        self.desired_speed_send.clicked.connect(self._send_desired_speed)
+        self.reset_position_send.clicked.connect(self._send_reset_position)
+        self.stop_button.clicked.connect(self._on_stop_clicked)
+        self.reset_button.clicked.connect(self._on_reset_clicked)
+
+        # Periodic polling of NetworkTables for live stats
+        self._poll_timer = QTimer(self)
+        self._poll_timer.setInterval(200)  # ms
+        self._poll_timer.timeout.connect(self._update_from_nt)
+        self._poll_timer.start()
+
         # Add the three layouts to the main layout
         layout.addLayout(header_layout)
         layout.addWidget(header_divider)
@@ -153,5 +188,121 @@ class MotorDisplay(QWidget):
 
         layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
+        # Track latched command booleans so we can clear them on the next command
+        self._stop_latched = False
+        self._reset_latched = False
+
     def _on_close_clicked(self):
+        try:
+            if hasattr(self, "_poll_timer"):
+                self._poll_timer.stop()
+        except Exception:
+            pass
         self.close_requested.emit(self)
+
+    def _update_from_nt(self):
+        """Fetch latest motor stats from NT and update labels."""
+        if not getattr(self, "_nt", None):
+            return
+        try:
+            data = self._nt.get_motor_data(int(self.device_id))
+        except Exception:
+            print("hello")
+            return
+
+        # Format and update UI labels
+        try:
+            self.voltage_value.setText(f"{data.busVoltage:.1f} V")
+            self.current_value.setText(f"{data.outputCurrent:.1f} A")
+            self.temp_value.setText(f"{data.temperature:.1f} °C")
+            self.velocity_value.setText(f"{data.velocity:.0f} rpm")
+            # setSpeed expected in [-1, 1] from stats; show as percentage
+            self.setspeed_value.setText(f"{data.setSpeed * 100:.0f} %")
+            self.position_value.setText(f"{data.position:.2f} rotations")
+        except Exception:
+            print("oh no")
+            pass
+
+    def _set_cmd_bool(self, key: str, value: bool) -> bool:
+        """Attempt to set a boolean command topic directly via the client's publishers.
+        Returns True on success, False otherwise.
+        """
+        if not getattr(self, "_nt", None):
+            return False
+        try:
+            pubs = self._nt._ensure_cmd_pubs(
+                int(self.device_id)
+            )  # uses client internals
+            pubs[key].set(bool(value))
+            return True
+        except Exception:
+            return False
+
+    def _send_desired_speed(self):
+        """Read percent from input ([-100, 100]) and command NT in [-1, 1].
+        Also clears a previously latched 'stop' boolean as requested.
+        """
+        if not getattr(self, "_nt", None):
+            return
+        text = self.desired_speed_input.text().strip()
+        if not text:
+            return
+        try:
+            pct = float(text)
+        except ValueError:
+            return
+        # Clamp to [-100, 100] then scale to [-1, 1]
+        pct = max(-100.0, min(100.0, pct))
+
+        # If stop was latched True, clear it now (set back to False)
+        if self._stop_latched:
+            if self._set_cmd_bool("stop", False):
+                self._stop_latched = False
+
+        try:
+            self._nt.set_speed(int(self.device_id), pct / 100.0)
+        except Exception:
+            pass
+
+    def _send_reset_position(self):
+        """Read target position (rotations) and command NT absolute position.
+        Also clears a previously latched 'reset' boolean as requested.
+        """
+        if not getattr(self, "_nt", None):
+            return
+        text = self.reset_position_input.text().strip()
+        if not text:
+            return
+        try:
+            rotations = float(text)
+        except ValueError:
+            return
+
+        # If reset was latched True, clear it now (set back to False)
+        if self._reset_latched:
+            if self._set_cmd_bool("reset", False):
+                self._reset_latched = False
+
+        try:
+            self._nt.set_position(int(self.device_id), rotations)
+        except Exception:
+            pass
+
+    def _on_stop_clicked(self):
+        # Latch stop to True; it will be cleared on next desired speed command
+        if self._set_cmd_bool("stop", True):
+            self._stop_latched = True
+
+    def _on_reset_clicked(self):
+        # Latch reset to True; it will be cleared on next position command
+        if self._set_cmd_bool("reset", True):
+            self._reset_latched = True
+
+    def closeEvent(self, event):
+        # Stop polling when the widget closes; do not stop the shared NT client
+        try:
+            if hasattr(self, "_poll_timer"):
+                self._poll_timer.stop()
+        except Exception:
+            pass
+        super().closeEvent(event)
