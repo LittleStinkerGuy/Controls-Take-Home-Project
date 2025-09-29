@@ -1,4 +1,4 @@
-package frc.robot.subsystems;
+package frc.robot.subsystems.Motor;
 
 import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.config.SparkMaxConfig;
@@ -10,9 +10,7 @@ import edu.wpi.first.units.measure.*;
 import com.revrobotics.spark.SparkBase.PersistMode;
 import com.revrobotics.spark.SparkBase.ResetMode;
 
-import edu.wpi.first.wpilibj2.command.SubsystemBase;
-
-public class SparkMaxMotor extends SubsystemBase implements Motor {
+public class SparkMaxMotor extends Motor {
     private final SparkMax motor;
     boolean absoluteEncoder;
 
@@ -22,6 +20,7 @@ public class SparkMaxMotor extends SubsystemBase implements Motor {
 
         SparkMaxConfig globalConfig = new SparkMaxConfig();
         motor.configure(globalConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+        initNT();
     }
 
     public int getId() {
@@ -45,12 +44,8 @@ public class SparkMaxMotor extends SubsystemBase implements Motor {
     }
 
     public AngularVelocity getVelocity() {
-        double v;
-        if (absoluteEncoder) {
-            v = motor.getAbsoluteEncoder().getVelocity();
-        } else {
-            v = motor.getEncoder().getVelocity();
-        }
+        double v = absoluteEncoder ? motor.getAbsoluteEncoder().getVelocity()
+                : motor.getEncoder().getVelocity();
         return RPM.of(v);
     }
 
@@ -66,16 +61,13 @@ public class SparkMaxMotor extends SubsystemBase implements Motor {
     };
 
     public Angle getPosition() {
-        double p;
-        if (absoluteEncoder) {
-            p = motor.getAbsoluteEncoder().getPosition();
-        } else {
-            p = motor.getEncoder().getPosition();
-        }
+        double p = absoluteEncoder ? motor.getAbsoluteEncoder().getPosition()
+                : motor.getEncoder().getPosition();
         return Rotations.of(p);
     }
 
     public void stopMotor() {
+        super.desiredSpeedPublisher.set(0);
         motor.stopMotor();
     };
 }

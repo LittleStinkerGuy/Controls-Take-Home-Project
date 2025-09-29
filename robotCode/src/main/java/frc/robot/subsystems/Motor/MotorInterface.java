@@ -1,9 +1,8 @@
-package frc.robot.subsystems;
+package frc.robot.subsystems.Motor;
 
-import static edu.wpi.first.units.Units.Rotations;
 import edu.wpi.first.units.measure.*;
 
-public interface Motor {
+public interface MotorInterface {
     public int getId();
 
     public Voltage getBusVoltage();
@@ -22,9 +21,11 @@ public interface Motor {
 
     public Angle getPosition();
 
-    public default void resetPosition() {
-        this.setPosition(Rotations.of(0));
-    };
+    public void resetPosition();
 
     public void stopMotor();
+
+    public void initNT();
+
+    public void publishToNT();
 }
