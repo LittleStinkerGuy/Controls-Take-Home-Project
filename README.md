@@ -8,7 +8,8 @@ Todo:
     -   [x] Kraken Support
     -   [x] Falcon Support
     -   [x] SparkMax Support
-    -   [ ] Network Table Support
+    -   [x] Network Table Support
+    -   [ ] Create motor instances with network table
 -   [ ] Add support for motor movement in `./driverUI`
 -   [ ] Create a basic debug library in `./RobotCode`
 -   [ ] Add logging system in `./driverUI`
@@ -27,7 +28,7 @@ Todo:
 **Challenges Faced:**
 N/A
 
-### 2. Create Subsystems for TalonFX motors and sparkMax motors
+### 2. Create Subsystems for TalonFX motors and SparkMax motors
 
 **Changes Made:**
 
@@ -47,3 +48,25 @@ N/A
 1. Found code samples in various parts of the web including [Swayam's WWRF code repo](https://github.com/swaswa999/FRC-Coding-and-Controls-Basics/tree/main) and [last year's GRT code](https://github.com/grt192/GRT2025/tree/pre-idaho). Also used auto generated Javadoc documentation.
 2. Changed definition of current and voltage getters because FalconFX exposes a couple values (like `motor.getSupplyVoltage()` or `motor.getMotorVoltage()`) and SparkMax only exposes one.
 3. If `setPosition()` is used with an absolute encoder, it doesn't do anything. (Bad Solution)
+
+### 3. Add support for reading motor state and moving motors
+
+**Changes Made:**
+
+1. Changed setup of motor subsystem to include the `MotorInterface` interface and `Motor` abstract class to implement network table code with all instances of `Motor`
+2. Created a `MotorTester` subsystem to create test motors
+3. Added network table implementation to `Motor` class
+
+**Challenges Faced:**
+
+1. Identifying "correct" network table implementation and schema
+2. Handling possible race conditions in code
+3. Understanding overall WPILib project structure
+4. The network table implementation to change motor values seemed not to work
+
+**Solutions**
+
+1. Once again taking inspiration from [last year's GRT code](https://github.com/grt192/GRT2025/tree/pre-idaho) and ChatGPT.
+2. I did research on race condition in Java and discovered AtomicBooleans and the `Volatile` Keyword
+3. Digging into documentation and also discovering command robots vs timed robots.
+4. Looking into the manufacturers' documentation revealed that a separate sim library was required to get them to show changes.
