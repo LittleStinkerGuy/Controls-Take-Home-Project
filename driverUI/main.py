@@ -33,11 +33,13 @@ class MainWindow(QMainWindow):
         horizontal_line.setFrameShape(QFrame.Shape.HLine)
         layout.addWidget(horizontal_line)
 
+        self.master_motor_layout = QHBoxLayout()
         self.motor_layout = QHBoxLayout()
-        layout.addLayout(self.motor_layout, 1)
+        self.master_motor_layout.addLayout(self.motor_layout)
+        layout.addLayout(self.master_motor_layout, 1)
 
         self.create_control = create_motor_button.CreateMotorButton()
-        self.motor_layout.addWidget(self.create_control, 1)
+        self.master_motor_layout.addWidget(self.create_control, 1)
         self.displayCount = 0
         self.used_ids = set()
         self.stretchSize = 3
@@ -49,16 +51,16 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(widget)
 
     def _remove_trailing_stretch(self):
-        count = self.motor_layout.count()
+        count = self.master_motor_layout.count()
         if count > 0:
-            item = self.motor_layout.itemAt(count - 1)
+            item = self.master_motor_layout.itemAt(count - 1)
             if item is not None and item.spacerItem() is not None:
-                self.motor_layout.takeAt(count - 1)
+                self.master_motor_layout.takeAt(count - 1)
 
     def _apply_stretch(self):
         self._remove_trailing_stretch()
         if getattr(self, "stretchSize", 0) > 0:
-            self.motor_layout.addStretch(self.stretchSize)
+            self.master_motor_layout.addStretch(self.stretchSize)
 
     def _calculate_stretch_size(self):
         max_stretch_slots = 3
@@ -92,7 +94,7 @@ class MainWindow(QMainWindow):
         widget.close_requested.connect(self.remove_motor_display)
         self.used_ids.add(unique_id)
         self.displayCount += 1
-        self.motor_layout.insertWidget(0, widget, 1)
+        self.motor_layout.addWidget(widget, 1)
         self._update_layout_state()
 
     def remove_motor_display(self, widget):

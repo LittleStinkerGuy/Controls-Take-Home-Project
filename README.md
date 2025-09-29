@@ -70,3 +70,23 @@ N/A
 2. I did research on race condition in Java and discovered AtomicBooleans and the `Volatile` Keyword
 3. Digging into documentation and also discovering command robots vs timed robots.
 4. Looking into the manufacturers' documentation revealed that a separate sim library was required to get them to show changes.
+
+### 4. Created Python UI
+
+**Changes Made:**
+
+1. Made motor control widgets
+2. Made widget that creates motor controller widgets
+3. Laid out UI
+4. Added intractability to the controller creator
+
+**Challenges Faced:**
+
+1. Learning a new UI framework alsnfsjkgs
+2. Getting widgets to the correct width
+3. Proper lining up of the motor controller widgets
+
+**Solutions**
+
+1. Hard work and pain 😭
+2. Google!
